@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Finder</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDOfe98i8_Z6sdJc5cgi99ezs9Q1H8MGa0"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5dc; /* Cream */
+            color: #2f4f4f; /* Dark Green */
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+        }
+
+        .container {
+            width: 40%;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        #map {
+            width: 60%;
+            height: 100vh;
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #2e8b57; /* Olive */
+            text-align: center;
+        }
+
+        .food-types {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 0;
+            list-style: none;
+        }
+
+        .food-types li {
+            background-color: white;
+            border: 2px solid #2e8b57;
+            color: #2e8b57;
+            padding: 10px 15px;
+            margin: 5px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.3s;
+        }
+
+        .food-types li.selected {
+            background-color: #2e8b57;
+            color: white;
+        }
+
+        button {
+            width: 100%;
+            margin-top: 10px;
+            padding: 12px;
+            font-size: 18px;
+            background-color: #2e8b57; /* Olive */
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background-color: #2f4f4f; /* Dark Green */
+        }
+
+        #restaurantList {
+            margin-top: 10px;
+            text-align: left;
+        }
+
+        .restaurant-item {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .restaurant-item:hover {
+            transform: scale(1.02);
+        }
+
+        img {
+            width: 80px;
+            border-radius: 8px;
+            margin-top: 5px;
+        }
+
+        ul {
+            padding-left: 20px;
+            text-align: left;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+
+            .container {
+                width: 100%;
+                height: 50%;
+            }
+
+            #map {
+                width: 100%;
+                height: 50%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Restaurant Finder</h1>
+        <p>Click food categories to filter restaurants:</p>
+        <ul class="food-types" id="categoryList"></ul>
+        <button id="findRestaurants">Find Restaurants</button>
+        <div id="restaurantList"></div>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+        const types = [
+            "Sushi",
+            "Japanese",
+            "Asian",
+            "Chinese",
+            "Fast Food",
+            "Thai",
+            "Ramen",
+            "Vietnamese",
+            "Pho",
+            "American",
+            "Wings",
+            "Mexican",
+            "Açaí",
+            "Pizza",
+            "Cafe",
+            "Dessert",
+            "Ice Cream",
+            "Breakfast",
+            "Italian"
+        ];
+
+
+        const restaurants = {
+            "Chipotle": {
+                logo: "./logos/chipotle.png",
+                price: 12.00,
+                locations: [
+                    "1948 W Burnside St, Portland, OR 97209",
+                    "704 NE Weidler St, Portland, OR 97232",
+                    "9120 SE Washington St, Portland, OR 97216",
+                    "14700 SE Division St, Portland, OR 97236",
+                    "2505 SE 122nd Ave, Portland, OR 97236",
+                    "10566 SE 82nd Ave, Happy Valley, OR 97086"
+                ],
+                type: ["Mexican"]
+            },
+            "Bamboo Sushi": {
+                logo: "./logos/bamboo_sushi.png",
+                price: 25.00,
+                locations: [
+                    "310 SE 28th Ave, Portland, OR 97214",
+                    "836 NW 23rd Ave, Portland, OR 97210",
+                    "1409 NE Alberta St, Portland, OR 97211",
+                    "2545 SW Cedar Hills Blvd, Beaverton, OR 97005",
+                    "1232 NW Glisan St, Portland, OR 97209"
+                ],
+                type: ["Sushi", "Japanese", "Asian"]
+            },
+            "Fire on the Mountain": {
+                logo: "./logos/fire_on_the_mountain.png",
+                price: 15.00,
+                locations: [
+                    "1708 E Burnside St, Portland, OR 97214",
+                    "4225 N Interstate Ave, Portland, OR 97217",
+                    "3443 NE 57th Ave, Portland, OR 97213",
+                    "1135 NE Broadway St, Portland, OR 97232"
+                ],
+                type: ["American", "Wings"]
+            },
+            "Panda Express": {
+                logo: "./logos/panda_express.png",
+                price: 10.00,
+                locations: [
+                    "909 SW 6th Ave, Portland, OR 97204",
+                    "1460 NE Weidler St, Portland, OR 97232",
+                    "1012 Lloyd Center, Portland, OR 97232",
+                    "10209 NE Halsey St, Portland, OR 97220",
+                    "12518 SE Division St, Portland, OR 97236",
+                    "2500 SW Cedar Hills Blvd, Beaverton, OR 97005"
+                ],
+                type: ["Chinese", "Fast Food", "Asian"]
+            },
+            "Thai Smile": {
+                logo: "./logos/thai_smile.png",
+                price: 12.00,
+                locations: [
+                    "3135 SW Moody Ave, Portland, OR 97239",
+                    "1325 NE Broadway St, Portland, OR 97232",
+                    "1230 NW 23rd Ave, Portland, OR 97210"
+                ],
+                type: ["Thai", "Asian"]
+            },
+            "Thai Street": {
+                logo: "./logos/thai_street.png",
+                price: 12.00,
+                locations: [
+                    "121 SE 82nd Ave, Portland, OR 97216",
+                    "456 SW Washington St, Portland, OR 97204"
+                ],
+                type: ["Thai", "Asian"]
+            },
+            "Taco Bell": {
+                logo: "./logos/taco_bell.png",
+                price: 8.00,
+                locations: [
+                    "325 NE 102nd Ave, Portland, OR 97220",
+                    "6116 NE Martin Luther King Jr Blvd, Portland, OR 97211",
+                    "10075 SW Barbur Blvd, Portland, OR 97219",
+                    "1505 NE 40th Ave, Portland, OR 97232",
+                    "1620 NE Grand Ave, Portland, OR 97232",
+                    "1850 NE 122nd Ave, Portland, OR 97230"
+                ],
+                type: ["Mexican", "Fast Food"]
+            },
+            "Tita’s Juice Bar": {
+                logo: "./logos/titas_juice_bar.png",
+                price: 10.00,
+                locations: [
+                    "2838 SE Gladstone St, Portland, OR 97202"
+                ],
+                type: ["Açaí"]
+            },
+            "Mis Tacones": {
+                logo: "./logos/mis_tacones.png",
+                price: 15.00,
+                locations: [
+                    "1670 NE Killingsworth St, Portland, OR 97211"
+                ],
+                type: ["Mexican"]
+            },
+            "MOD Pizza": {
+                logo: "./logos/mod_pizza.png",
+                price: 10.00,
+                locations: [
+                    "1707 NW Glisan St, Portland, OR 97209",
+                    "7017 NE Sandy Blvd, Portland, OR 97213",
+                    "12196 SE Sunnyside Rd, Clackamas, OR 97015",
+                    "945 NW 10th Ave, Portland, OR 97209",
+                    "13000 SW Pacific Hwy, Tigard, OR 97223"
+                ],
+                type: ["Pizza"]
+            },
+            "Dominos": {
+                logo: "./logos/dominos.png",
+                price: 10.00,
+                locations: [
+                    "5319 SW Westgate Dr, Portland, OR 97221",
+                    "1630 SE Bybee Blvd, Portland, OR 97202",
+                    "16265 NW Cornell Rd, Beaverton, OR 97006",
+                    "2800 SE Gladstone St, Portland, OR 97202",
+                    "4728 SE 82nd Ave, Portland, OR 97266"
+                ],
+                type: ["Pizza", "Fast Food"]
+            },
+            "Cafe Yumm": {
+                logo: "./logos/cafe_yumm.png",
+                price: 12.00,
+                locations: [
+                    "301 NW 10th Ave, Portland, OR 97209",
+                    "1400 NW Irving St, Portland, OR 97209",
+                    "1235 SE 11th Ave, Portland, OR 97214"
+                ],
+                type: ["American"]
+            },
+            "Panera": {
+                logo: "./logos/panera.png",
+                price: 12.00,
+                locations: [
+                    "7149 SW Nyberg St, Tualatin, OR 97062",
+                    "3435 SW Cedar Hills Blvd, Beaverton, OR 97005",
+                    "2314 Lloyd Center, Portland, OR 97232",
+                    "1400 NW 23rd Ave, Portland, OR 97210",
+                    "10230 SE Washington St, Portland, OR 97216"
+                ],
+                type: ["Cafe","Italian"]
+            },
+            "Arrivederci’s": {
+                logo: "./logos/arrivedercis.png",
+                price: 20.00,
+                locations:
+                    ["17023 SE McLoughlin Blvd, Milwaukie, OR 97267"],
+                type: ["Italian"],
+            },
+            "Doe Donuts": {
+                logo: "./logos/doe_donuts.png",
+                price: 5.00,
+                locations: [
+                    "8201 SE Powell Blvd, Portland, OR 97266",
+                    "1501 NE Alberta St, Portland, OR 97211"
+                ],
+                type: ["Dessert"]
+            },
+            "Papa Haydn": {
+                logo: "./logos/papa_haydn.png",
+                price: 15.00,
+                locations: [
+                    "701 NW 23rd Ave, Portland, OR 97210",
+                    "5829 SE Milwaukie Ave, Portland, OR 97202"
+                ],
+                type: ["Dessert"]
+            },
+            "Dave’s Hot Chicken": {
+                logo: "./logos/daves_hot_chicken.png",
+                price: 12.00,
+                locations: [
+                    "710 SW 11th Ave, Portland, OR 97205",
+                    "11750 SE 82nd Ave, Happy Valley, OR 97086",
+                    "11140 SW Barnes Rd, Portland, OR 97225"
+                ],
+                type: ["American", "Fast Food"]
+            },
+            "Off the Griddle": {
+                logo: "./logos/off_the_griddle.png",
+                price: 15.00,
+                locations: [
+                    "6526 SE Foster Rd, Portland, OR 97206"
+                ],
+                type: ["Breakfast"]
+            },
+            "Kayo’s Ramen Bar": {
+                logo: "./logos/kayos_ramen_bar.png",
+                price: 15.00,
+                locations: [
+                    "3808 N Williams Ave, Portland, OR 97227",
+                    "2100 SE Belmont St, Portland, OR 97214"
+                ],
+                type: ["Ramen", "Japanese", "Asian"]
+            },
+            "Cheese and Crack": {
+                logo: "./logos/cheese_and_crack.png",
+                price: 10.00,
+                locations: [
+                    "22 SE 28th Ave, Portland, OR 97214"
+                ],
+                type: ["Dessert", "Cafe"]
+            },
+            "Pinolo Gelato": {
+                logo: "./logos/pinolo_gelato.png",
+                price: 5.00,
+                locations: [
+                    "3707 SE Division St, Portland, OR 97202",
+                    "1110 SE Alder St, Portland, OR 97214",
+                    "2035 NE Alberta St, Portland, OR 97211"
+                ],
+                type: ["Dessert", "Ice Cream"]
+            },
+            "Turning Peel": {
+                logo: "./logos/turning_peel.png",
+                price: 15.00,
+                locations: [
+                    "5005 SE 72nd Ave, Portland, OR 97206"
+                ],
+                type: ["Pizza"]
+            },
+            "No Name Pho": {
+                logo: "./logos/no_name_pho.png",
+                price: 12.00,
+                locations: [
+                    "8065 SE 13th Ave, Portland, OR 97202",
+                    "1239 SW Jefferson St, Portland, OR 97201"
+                ],
+                type: ["Vietnamese", "Pho", "Asian"]
+            },
+            "Fantino": {
+                logo: "./logos/fantino.png",
+                price: 20.00,
+                locations: [
+                    "600 SE Morrison St, Portland, OR 97214"
+                ],
+                type: ["Italian"]
+            }
+        }
+
+
+
+
+
+
+        let map;
+        let markers = [];
+        let geocoder;
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: { lat: 45.5152, lng: -122.6784 },
+                zoom: 12
+            });
+            geocoder = new google.maps.Geocoder();
+        }
+
+        window.onload = () => {
+            initMap();
+
+            const categoryList = document.getElementById("categoryList");
+            const restaurantList = document.getElementById("restaurantList");
+            const findRestaurantsBtn = document.getElementById("findRestaurants");
+
+            // Create clickable food type buttons
+            types.forEach(type => {
+                let li = document.createElement("li");
+                li.textContent = type;
+                li.onclick = () => {
+                    li.classList.toggle("selected");
+                };
+                categoryList.appendChild(li);
+            });
+
+            // Find restaurants based on selected categories
+            findRestaurantsBtn.addEventListener("click", async () => {
+                const selectedCategories = Array.from(document.querySelectorAll(".food-types li.selected")).map(el => el.textContent);
+                restaurantList.innerHTML = ""; // Clear previous results
+                clearMarkers();
+
+                let matchedRestaurants = Object.entries(restaurants).filter(([name, data]) => 
+                    data.type.some(type => selectedCategories.includes(type))
+                );
+
+                if (matchedRestaurants.length === 0) {
+                    restaurantList.innerHTML = "<p>No restaurants match the selected categories.</p>";
+                    return;
+                }
+
+                for (const [name, data] of matchedRestaurants) {
+                    const restaurantItem = document.createElement("div");
+                    restaurantItem.classList.add("restaurant-item");
+                    restaurantItem.innerHTML = `
+                        <h2>${name}</h2>
+                        <img src="${data.logo}" alt="${name} logo">
+                        <p><strong>Price:</strong> $${data.price.toFixed(2)}</p>
+                        <p><strong>Locations:</strong></p>
+                        <ul>${data.locations.map(loc => `<li>${loc}</li>`).join('')}</ul>
+                        <p><strong>Categories:</strong> ${data.type.join(", ")}</p>
+                    `;
+                    restaurantList.appendChild(restaurantItem);
+
+                    // Add restaurant markers
+                    for (const location of data.locations) {
+                        await addMarker(location, data.logo);
+                    }
+                }
+            });
+
+            function addMarker(address, iconUrl) {
+                return new Promise((resolve, reject) => {
+                    geocoder.geocode({ address: address }, (results, status) => {
+                        if (status === "OK") {
+                            const marker = new google.maps.Marker({
+                                position: results[0].geometry.location,
+                                map: map,
+                                icon: {
+                                    url: iconUrl,
+                                    scaledSize: new google.maps.Size(40, 40)
+                                }
+                            });
+                            markers.push(marker);
+                            resolve();
+                        } else {
+                            console.error("Geocode failed: " + status);
+                            reject();
+                        }
+                    });
+                });
+            }
+
+            function clearMarkers() {
+                markers.forEach(marker => marker.setMap(null));
+                markers = [];
+            }
+        };
+    </script>
+</body>
+</html>
